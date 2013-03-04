@@ -39,6 +39,22 @@ def binaryread(file, vartype, shape=(1), charlen=16):
             result = np.reshape(result, shape)
     return result
     
+def binaryread_np(file, vartype, shape=(1), charlen=16):
+    """uses numpy to read from binary file
+    """
+    
+    #read a string variable of length charlen
+    if vartype is str:
+        result = file.read(charlen*1)     
+    else:
+        #find the number of values
+        nval = np.core.fromnumeric.prod(shape)
+        result = np.fromfile(file,vartype,nval)        
+        result = np.reshape(result, shape)
+    return result
+    
+
+
 
 class HeadFile(object):
     '''
