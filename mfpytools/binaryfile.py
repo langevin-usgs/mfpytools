@@ -137,7 +137,7 @@ class HeadFile(object):
         '''
         Read the MODFLOW header
         '''        
-        header = np.fromfile(self.file,self.header_dtype,1)[0]
+        header = binaryread(self.file,self.header_dtype,(1,))
         return header
 
 
