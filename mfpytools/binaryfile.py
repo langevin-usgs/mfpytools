@@ -2,7 +2,7 @@ import numpy as np
 from collections import OrderedDict
 
 
-def binaryread(file, vartype, shape=(1), charlen=16):
+def binaryread_struct(file, vartype, shape=(1), charlen=16):
     """Read text, a scalar value, or an array of values from a binary file.
        file is an open file object
        vartype is the return variable type: str, numpy.int32, numpy.float32, 
@@ -39,7 +39,7 @@ def binaryread(file, vartype, shape=(1), charlen=16):
             result = np.reshape(result, shape)
     return result
     
-def binaryread_np(file, vartype, shape=(1), charlen=16):
+def binaryread(file, vartype, shape=(1), charlen=16):
     """uses numpy to read from binary file
     """
     
