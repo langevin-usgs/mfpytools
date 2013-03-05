@@ -49,11 +49,12 @@ def binaryread_np(file, vartype, shape=(1), charlen=16):
     else:
         #find the number of values
         nval = np.core.fromnumeric.prod(shape)
-        result = np.fromfile(file,vartype,nval)        
-        result = np.reshape(result, shape)
+        result = np.fromfile(file,vartype,nval)
+        if nval == 1:
+            result = result[0]
+        else:
+            result = np.reshape(result, shape)
     return result
-    
-
 
 
 class HeadFile(object):
