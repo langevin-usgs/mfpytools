@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 
 def binaryread_struct(file, vartype, shape=(1), charlen=16):
-    """Read text, a scalar value, or an array of values from a binary file.
+    '''Read text, a scalar value, or an array of values from a binary file.
        file is an open file object
        vartype is the return variable type: str, numpy.int32, numpy.float32, 
            or numpy.float64
@@ -11,7 +11,7 @@ def binaryread_struct(file, vartype, shape=(1), charlen=16):
            for example, shape = (nlay, nrow, ncol)
        charlen is the length of the text string.  Note that string arrays cannot
            be returned, only multi-character strings.  Shape has no affect on strings.
-    """
+    '''
     import struct
     import numpy as np
     
@@ -40,8 +40,10 @@ def binaryread_struct(file, vartype, shape=(1), charlen=16):
     return result
     
 def binaryread(file, vartype, shape=(1), charlen=16):
-    """uses numpy to read from binary file
-    """
+    '''uses numpy to read from binary file.  This
+       was found to be faster than the struct
+       approach and is used as the default.
+    '''
     
     #read a string variable of length charlen
     if vartype is str:
@@ -59,7 +61,18 @@ def binaryread(file, vartype, shape=(1), charlen=16):
 
 class HeadFile(object):
     '''
+    The HeadFile class provides simple ways to retrieve 2d and 3d 
+    head arrays from a MODFLOW binary head file and time series
+    arrays for one or more cells.
     
+    A HeadFile object is created as
+    hdobj = HeadFile(filename, precision='single')
+    
+    The HeadFile class is built on an ordered dictionary consisting of 
+    keys, which are tuples of the modflow header information
+    (kstp, kper, pertim, totim, text, nrow, ncol, ilay)
+    and long integers, which are pointers to first bytes of data for
+    the corresponding data array.
     '''
     def __init__(self, filename, precision='single', verbose=False):
         self.filename = filename
@@ -89,6 +102,10 @@ class HeadFile(object):
         return
 
     def _build_index(self):
+        '''
+        Build the ordered dictionary, which maps the MODFLOW header information
+        to the position in the binary file.
+        '''
         kstp, kper, pertim, totim, text, nrow, ncol, ilay = self.get_header()
         self.nrow = nrow
         self.ncol = ncol
@@ -112,6 +129,9 @@ class HeadFile(object):
         return
 
     def get_header(self):
+        '''
+        Read the MODFLOW header
+        '''
         kstp = binaryread(self.file, np.int32)
         kper = binaryread(self.file, np.int32)
         pertim = binaryread(self.file, np.float32)
@@ -123,11 +143,19 @@ class HeadFile(object):
         return kstp, kper, pertim, totim, text, nrow, ncol, ilay
 
     def list_records(self):
+        '''
+        Print a list of all of the records in the file
+        hdobj.list_records()
+        '''
         for key in self.recorddict.keys():
             print key
         return
 
     def _fill_head_array(self, kstp=0, kper=0, totim=-1, text='HEAD'):
+        '''
+        Fill the three dimensional head array, self.head, for the
+        specified kstp and kper value or totim value.
+        '''
         recordlist = []
         for key in self.recorddict.keys():
             if text not in key[4]: continue
@@ -151,6 +179,11 @@ class HeadFile(object):
         return
 
     def get_data(self, kstp=0, kper=0, idx=0, totim=-1, ilay=0, text='HEAD'):
+        '''
+        Return a three dimensional head array for the specified kstp, kper
+        pair or totim value, or return a two dimensional head array
+        if the ilay argument is specified.
+        '''
         self._fill_head_array(kstp, kper, totim, text)
         if ilay == 0:
             return self.head
@@ -159,6 +192,18 @@ class HeadFile(object):
         return
 
     def get_ts(self, k=0, i=0, j=0, text='HEAD'):
+        '''
+        Create and return a time series array of size [ntimes, nstations].
+        
+        The get_ts method can be called as ts = hdobj.get_ts(1, 2, 3),
+        which will get the time series for layer 1, row 2, and column 3.
+        The time value will be in the first column of the array.
+        
+        Alternatively, the get_ts method can be called with a list like
+        ts = hdobj.get_ts( [(1, 2, 3), (2, 3, 4)] ), which will return
+        the time series for two different cells.
+        
+        '''
         if isinstance(k, list):
             kijlist = k
             nstation = len(kijlist)
