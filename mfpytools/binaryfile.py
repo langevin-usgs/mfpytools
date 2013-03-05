@@ -59,22 +59,12 @@ def binaryread(file, vartype, shape=(1), charlen=16):
     return result
 
 
-class HeadFile(object):
+class BinaryFile(object):
     '''
-    The HeadFile class provides simple ways to retrieve 2d and 3d 
-    head arrays from a MODFLOW binary head file and time series
-    arrays for one or more cells.
-    
-    A HeadFile object is created as
-    hdobj = HeadFile(filename, precision='single')
-    
-    The HeadFile class is built on an ordered dictionary consisting of 
-    keys, which are tuples of the modflow header information
-    (kstp, kper, pertim, totim, text, nrow, ncol, ilay)
-    and long integers, which are pointers to first bytes of data for
-    the corresponding data array.
+    The BinaryFile class is the super class from which specific dervied
+    classes are formed.  This class should not be instaniated directly    
     '''
-    def __init__(self, filename, precision='single', verbose=False):
+    def __init__(self, filename, precision, verbose):        
         self.filename = filename
         self.precision = precision
         self.verbose = verbose
@@ -91,74 +81,67 @@ class HeadFile(object):
             self.realtype = np.float64
         else:
             raise Exception('Unknown precision specified: ' + precision)
-
-        self.header_dtype = np.dtype([('kstp','i4'),('kper','i4'),('pertim','f4'),\
-                                     ('totim','f4'),('text','a16'),\
-                                     ('ncol','i4'),('nrow','i4'),('ilay','i4')])
-
-
+        
         #read through the file and build the pointer index
         self._build_index()
         
-        #allocate the head array
-        self.head = np.empty( (self.nlay, self.nrow, self.ncol), 
+        #allocate the value array
+        self.value = np.empty( (self.nlay, self.nrow, self.ncol), 
                          dtype=self.realtype)
-
         return
+   
 
     def _build_index(self):
         '''
-        Build the ordered dictionary, which maps the MODFLOW header information
+        Build the ordered dictionary, which maps the header information
         to the position in the binary file.
-        '''
-        kstp, kper, pertim, totim, text, nrow, ncol, ilay = self.get_header()
-        self.nrow = nrow
-        self.ncol = ncol
+        '''        
+        header = self.get_header()
+        self.nrow = header['nrow']
+        self.ncol = header['ncol']
         self.file.seek(0, 2)
         self.totalbytes = self.file.tell()
         self.file.seek(0, 0)        
-        self.databytes = ncol * nrow * self.realtype(1).nbytes
+        self.databytes = header['ncol'] * header['nrow'] * self.realtype(1).nbytes
         self.recorddict = OrderedDict()
         ipos = 0
-        while ipos < self.totalbytes:
-            kstp, kper, pertim, totim, text, nrow, ncol, ilay = self.get_header()
-            self.nlay=max(self.nlay, ilay)
-            if totim not in self.times:
-                self.times.append(totim)
-            self.kstpkper.append( (kstp, kper) )
-            key = (kstp, kper, pertim, totim, text, nrow, ncol, ilay)
+        while ipos < self.totalbytes:           
+            header = self.get_header()
+            self.nlay=max(self.nlay, header['ilay'])
+            if header['totim'] not in self.times:
+                self.times.append(header['totim'])
+            self.kstpkper.append( (header['kstp'], header['kper']) )
+            #key = (kstp, kper, pertim, totim, text, nrow, ncol, ilay)
             ipos = self.file.tell()
-            self.recorddict[key] = ipos
+            self.recorddict[header] = ipos
             self.file.seek(self.databytes, 1)
             ipos = self.file.tell()
         return
 
     def get_header(self):
         '''
-        Read the MODFLOW header
+        Read the file header
         '''        
         header = binaryread(self.file,self.header_dtype,(1,))
         return header
 
-
-
     def list_records(self):
         '''
         Print a list of all of the records in the file
-        hdobj.list_records()
+        obj.list_records()
         '''
         for key in self.recorddict.keys():
             print key
         return
 
-    def _fill_head_array(self, kstp=0, kper=0, totim=-1, text='HEAD'):
+    def _fill_value_array(self, kstp=0, kper=0, totim=-1):
         '''
-        Fill the three dimensional head array, self.head, for the
+        Fill the three dimensional value array, self.value, for the
         specified kstp and kper value or totim value.
         '''
         recordlist = []
         for key in self.recorddict.keys():
-            if text.upper() not in key[4]: continue
+            if self.text.upper() not in key[4]: continue
             if kstp > 0 and kper > 0:
                 if key[0] == kstp and key[1] == kper:
                     recordlist.append(key)
@@ -169,29 +152,29 @@ class HeadFile(object):
                 raise Exception('Data not found...')
 
         #initialize head with nan and then fill it
-        self.head[:, :, :] = np.nan
+        self.value[:, :, :] = np.nan
         for key in recordlist:
             ipos = self.recorddict[key]
             self.file.seek(ipos, 0)
             ilay = key[7]
-            self.head[ilay - 1, :, :] = binaryread(self.file, self.realtype, 
+            self.value[ilay - 1, :, :] = binaryread(self.file, self.realtype, 
                 shape=(self.nrow, self.ncol))
         return
 
-    def get_data(self, kstp=0, kper=0, idx=0, totim=-1, ilay=0, text='HEAD'):
+    def get_data(self, kstp=0, kper=0, idx=0, totim=-1, ilay=0):
         '''
-        Return a three dimensional head array for the specified kstp, kper
+        Return a three dimensional value array for the specified kstp, kper
         pair or totim value, or return a two dimensional head array
         if the ilay argument is specified.
         '''
-        self._fill_head_array(kstp, kper, totim, text)
+        self._fill_value_array(kstp, kper, totim)
         if ilay == 0:
-            return self.head
+            return self.value
         else:
-            return self.head[ilay-1, :, :]
+            return self.value[ilay-1, :, :]
         return
 
-    def get_ts(self, k=0, i=0, j=0, text='HEAD'):
+    def get_ts(self, k=0, i=0, j=0):
         '''
         Create and return a time series array of size [ntimes, nstations].
         
@@ -219,7 +202,7 @@ class HeadFile(object):
             recordlist = []
             ioffset = ((i - 1) * self.ncol + j - 1) * self.realtype(1).nbytes
             for key in self.recorddict.keys():
-                if text not in key[4]: continue
+                if self.text not in key[4]: continue
                 ilay = key[7]
                 if k == ilay:
                     recordlist.append(key)
@@ -231,3 +214,48 @@ class HeadFile(object):
             istat += 1
         return result
         
+
+class HeadFile(BinaryFile):
+    '''
+    The HeadFile class provides simple ways to retrieve 2d and 3d 
+    head arrays from a MODFLOW binary head file and time series
+    arrays for one or more cells.
+    
+    A HeadFile object is created as
+    hdobj = HeadFile(filename, precision='single')
+    
+    The HeadFile class is built on an ordered dictionary consisting of 
+    keys, which are tuples of the modflow header information
+    (kstp, kper, pertim, totim, text, nrow, ncol, ilay)
+    and long integers, which are pointers to first bytes of data for
+    the corresponding data array.
+    '''
+    def __init__(self, filename, text='head',precision='single', verbose=False):
+        self.text = text
+        self.header_dtype = np.dtype([('kstp','i4'),('kper','i4'),('pertim','f4'),\
+                                     ('totim','f4'),('text','a16'),\
+                                     ('ncol','i4'),('nrow','i4'),('ilay','i4')])
+        super(HeadFile,self).__init__(filename,precision,verbose)             
+
+
+class UcnFile(BinaryFile):
+    '''
+    The UcnFile class provides simple ways to retrieve 2d and 3d 
+    concentration arrays from a MT3D binary head file and time series
+    arrays for one or more cells.
+    
+    A UcnFile object is created as
+    ucnobj = UcnFile(filename, precision='single')
+    
+    The HeadFile class is built on an ordered dictionary consisting of 
+    keys, which are tuples of the modflow header information
+    (kstp, kper, pertim, totim, text, nrow, ncol, ilay)
+    and long integers, which are pointers to first bytes of data for
+    the corresponding data array.
+    '''
+    def __init__(self, filename, text='concentration',precision='single', verbose=False):
+        self.text = text
+        self.header_dtype = np.dtype([('ntrans','i4'),('kstp','i4'),('kper','i4'),\
+                                     ('totim','f4'),('text','a16'),\
+                                     ('ncol','i4'),('nrow','i4'),('ilay','i4')])
+        super(UcnFile,self).__init__(filename,precision,verbose)                
