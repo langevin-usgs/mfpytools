@@ -59,9 +59,9 @@ def binaryread(file, vartype, shape=(1), charlen=16):
     return result
 
 
-class BinaryFile(object):
+class BinaryLayerFile(object):
     '''
-    The BinaryFile class is the super class from which specific dervied
+    The BinaryLayerFile class is the super class from which specific derived
     classes are formed.  This class should not be instaniated directly    
     '''
     def __init__(self, filename, precision, verbose):        
@@ -215,7 +215,7 @@ class BinaryFile(object):
         return result
         
 
-class HeadFile(BinaryFile):
+class HeadFile(BinaryLayerFile):
     '''
     The HeadFile class provides simple ways to retrieve 2d and 3d 
     head arrays from a MODFLOW binary head file and time series
@@ -224,7 +224,10 @@ class HeadFile(BinaryFile):
     A HeadFile object is created as
     hdobj = HeadFile(filename, precision='single')
     
-    The HeadFile class is built on an ordered dictionary consisting of 
+    This class can also be used for a binary drawdown file as
+    ddnobj = HeadFile(filename, precision='single', text='drawdown')
+    
+    The BinaryLayerFile class is built on an ordered dictionary consisting of 
     keys, which are tuples of the modflow header information
     (kstp, kper, pertim, totim, text, nrow, ncol, ilay)
     and long integers, which are pointers to first bytes of data for
@@ -238,7 +241,7 @@ class HeadFile(BinaryFile):
         super(HeadFile,self).__init__(filename,precision,verbose)             
 
 
-class UcnFile(BinaryFile):
+class UcnFile(BinaryLayerFile):
     '''
     The UcnFile class provides simple ways to retrieve 2d and 3d 
     concentration arrays from a MT3D binary head file and time series
@@ -247,7 +250,7 @@ class UcnFile(BinaryFile):
     A UcnFile object is created as
     ucnobj = UcnFile(filename, precision='single')
     
-    The HeadFile class is built on an ordered dictionary consisting of 
+    The BinaryLayerFile class is built on an ordered dictionary consisting of 
     keys, which are tuples of the modflow header information
     (kstp, kper, pertim, totim, text, nrow, ncol, ilay)
     and long integers, which are pointers to first bytes of data for
@@ -258,4 +261,5 @@ class UcnFile(BinaryFile):
         self.header_dtype = np.dtype([('ntrans','i4'),('kstp','i4'),('kper','i4'),\
                                      ('totim','f4'),('text','a16'),\
                                      ('ncol','i4'),('nrow','i4'),('ilay','i4')])
-        super(UcnFile,self).__init__(filename,precision,verbose)                
+        super(UcnFile,self).__init__(filename,precision,verbose)
+
