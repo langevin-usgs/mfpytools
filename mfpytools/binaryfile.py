@@ -92,6 +92,11 @@ class HeadFile(object):
         else:
             raise Exception('Unknown precision specified: ' + precision)
 
+        self.header_dtype = np.dtype([('kstp','i4'),('kper','i4'),('pertim','f4'),\
+                                     ('totim','f4'),('text','a16'),\
+                                     ('ncol','i4'),('nrow','i4'),('ilay','i4')])
+
+
         #read through the file and build the pointer index
         self._build_index()
         
@@ -131,16 +136,11 @@ class HeadFile(object):
     def get_header(self):
         '''
         Read the MODFLOW header
-        '''
-        kstp = binaryread(self.file, np.int32)
-        kper = binaryread(self.file, np.int32)
-        pertim = binaryread(self.file, np.float32)
-        totim = binaryread(self.file, np.float32)
-        text = binaryread(self.file, str, charlen=16)
-        ncol = binaryread(self.file, np.int32)
-        nrow = binaryread(self.file, np.int32)
-        ilay = binaryread(self.file, np.int32)
-        return kstp, kper, pertim, totim, text, nrow, ncol, ilay
+        '''        
+        header = np.fromfile(self.file,self.header_dtype,1)[0]
+        return header
+
+
 
     def list_records(self):
         '''
@@ -158,7 +158,7 @@ class HeadFile(object):
         '''
         recordlist = []
         for key in self.recorddict.keys():
-            if text not in key[4]: continue
+            if text.upper() not in key[4]: continue
             if kstp > 0 and kper > 0:
                 if key[0] == kstp and key[1] == kper:
                     recordlist.append(key)
