@@ -1,3 +1,4 @@
+#simple test of the mfypytool utility for reading head and concentration files.
 import numpy as np
 
 import os, sys
