@@ -456,16 +456,18 @@ class CellBudgetFile(object):
             return binaryread(self.file, dtype, shape=(nlist,))
         elif imeth == 3:
             ilayer = binaryread(self.file, np.int32, shape=
-                              (self.nrow * self.ncol * self.nlay))
+                              (self.nrow, self.ncol))
             data = binaryread(self.file, self.realtype(1), shape=
-                              (self.nrow, self.ncol, self.nlay))
-            s += 'a list of two arrays.  '
-            s += 'The first is an integer layer array of shape  ' + str( (self.nrow, self.ncol, self.nlay) )
-            s += 'The second is real data array of shape  ' + str( (self.nrow, self.ncol, self.nlay) )
-            print s           
+                              (self.nrow, self.ncol))
+            s += 'a list of two 2D arrays.  '
+            s += 'The first is an integer layer array of shape  ' + str( 
+                                                       (self.nrow, self.ncol) )
+            s += 'The second is real data array of shape  ' + str( 
+                                                       (self.nrow, self.ncol) )
+            print s
             return [ilayer, data]
         elif imeth == 4:
-            s += 'an array of shape ' + str( (self.nrow, self.ncol) )
+            s += 'a 2d array of shape ' + str( (self.nrow, self.ncol) )
             print s
             return binaryread(self.file, self.realtype(1), shape=
                               (self.nrow, self.ncol))

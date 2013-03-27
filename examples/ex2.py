@@ -8,7 +8,7 @@ import mfpytools.binaryfile as bf
 reload(bf)
 
 #create the cell by cell flow budget object
-cbb = bf.CellBudgetFile('ex1.cbc')
+cbb = bf.CellBudgetFile('ex2.cbc')
 
 #this will print a list of the records in the cbc file
 cbb.list_records()
