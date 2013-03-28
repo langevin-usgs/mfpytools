@@ -439,15 +439,15 @@ class CellBudgetFile(object):
         imeth = key[6]
         s = 'Returning ' + key[2].strip() + ' as '
         if imeth == 0:
-            s += 'an array of shape ' + str( (self.nrow, self.ncol, self.nlay) )
+            s += 'an array of shape ' + str( (self.nlay, self.nrow, self.ncol) )
             print s           
             return binaryread(self.file, self.realtype(1), shape=
-                              (self.nrow, self.ncol, self.nlay))
+                              (self.nlay, self.nrow, self.ncol))
         elif imeth == 1:
-            s += 'an array of shape ' + str( (self.nrow, self.ncol, self.nlay) )
+            s += 'an array of shape ' + str( (self.nlay, self.nrow, self.ncol) )
             print s           
             return binaryread(self.file, self.realtype(1), shape=
-                              (self.nrow, self.ncol, self.nlay))
+                              (self.nlay, self.nrow, self.ncol))
         elif imeth == 2:
             nlist = binaryread(self.file, np.int32)
             dtype = np.dtype([('node', np.int32), ('q', self.realtype)])
