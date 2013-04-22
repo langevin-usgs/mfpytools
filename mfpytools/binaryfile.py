@@ -378,7 +378,7 @@ class CellBudgetFile(object):
             nlist = binaryread(self.file, np.int32)
             nbytes = nlist * (np.int32(1).nbytes + nval * self.realtype(1).nbytes)
         else:
-            raise Exception('invalid method code ' + imeth)
+            raise Exception('invalid method code ' + str(imeth))
         self.file.seek(nbytes, 1)
         return
                           
