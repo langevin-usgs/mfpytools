@@ -321,9 +321,6 @@ class CellBudgetFile(object):
         to the position in the binary file.
         '''        
         header = self.get_header()
-        self.nrow = header['nrow']
-        self.ncol = header['ncol']
-        self.nlay = abs(header['nlay'])
         self.file.seek(0, 2)
         self.totalbytes = self.file.tell()
         self.file.seek(0, 0)
@@ -342,8 +339,13 @@ class CellBudgetFile(object):
                 self.kstpkper.append( kstpkper )
             if header['text'] not in self.textlist:
                 self.textlist.append(header['text'])
-            #key = (kstp, kper, text, nrow, ncol, nlay)
             ipos = self.file.tell()
+            if self.verbose:
+                for itxt in ['kstp', 'kper', 'text', 'ncol', 'nrow', 'nlay',
+                             'imeth', 'delt', 'pertim', 'totim']:
+                    print itxt + ': ' + str(header[itxt])
+                print 'file position: ', ipos
+                print '\n'
             self.recorddict[header] = ipos    #store the position right after header2
             self.skip_record(header)
             #self.file.seek(self.databytes, 1) #skip ahead to the beginning of the next header
@@ -354,29 +356,31 @@ class CellBudgetFile(object):
         '''
         Skip over this record, not counting header and header2.
         '''
+        nlay = abs(header['nlay'])
+        nrow = header['nrow']
+        ncol = header['ncol']
         imeth = header['imeth']
         if imeth == 0:
-            nbytes = (self.nrow * self.ncol * self.nlay 
-                      * self.realtype(1).nbytes)
+            nbytes = (nrow * ncol * nlay * self.realtype(1).nbytes)
         elif imeth == 1:
-            nbytes = (self.nrow * self.ncol * self.nlay 
-                      * self.realtype(1).nbytes)
+            nbytes = (nrow * ncol * nlay * self.realtype(1).nbytes)
         elif imeth == 2:
-            nlist = binaryread(self.file, np.int32)
+            nlist = binaryread(self.file, np.int32)[0]
             nbytes = nlist * (np.int32(1).nbytes + self.realtype(1).nbytes)
         elif imeth == 3:
-            nbytes = (self.nrow * self.ncol * self.nlay 
-                      * self.realtype(1).nbytes)
-            nbytes += (self.nrow * self.ncol * self.nlay 
-                      * np.int32(1).nbytes)
+            nbytes = (nrow * ncol * nlay * self.realtype(1).nbytes)
+            nbytes += (nrow * ncol * nlay * np.int32(1).nbytes)
         elif imeth == 4:
-            nbytes = (self.nrow * self.ncol * self.realtype(1).nbytes)
+            nbytes = (nrow * ncol * self.realtype(1).nbytes)
         elif imeth == 5:
-            nval = binaryread(self.file, np.int32)
-            for i in xrange(nval - 1):
+            nauxp1 = binaryread(self.file, np.int32)[0]
+            naux = nauxp1 - 1
+            for i in xrange(naux):
                 temp = binaryread(self.file, str, charlen=16)
-            nlist = binaryread(self.file, np.int32)
-            nbytes = nlist * (np.int32(1).nbytes + nval * self.realtype(1).nbytes)
+            nlist = binaryread(self.file, np.int32)[0]
+            if self.verbose: print 'nlist: ', nlist
+            nbytes = nlist * (np.int32(1).nbytes + self.realtype(1).nbytes + 
+                              naux * self.realtype(1).nbytes)
         else:
             raise Exception('invalid method code ' + str(imeth))
         self.file.seek(nbytes, 1)
@@ -389,6 +393,7 @@ class CellBudgetFile(object):
         #header = binaryread(self.file,self.header_dtype,(1,))
         header = binaryread(self.file,self.header_dtype,(1,))
         nlay = header['nlay']
+        #header['nlay'] = abs(nlay)
         if  nlay < 0:
             header2 = binaryread(self.file,self.header2_dtype,(1,))
         else:
@@ -421,33 +426,36 @@ class CellBudgetFile(object):
 
         #find the key corresponding to the desired record
         if idx is not None:
-            key = self.recorddict.keys()[idx]
+            header = self.recorddict.keys()[idx]
         else:
-            for key in self.recorddict.keys():
-                if text.upper() not in key[2]: continue
+            for header in self.recorddict.keys():
+                if text.upper() not in header['text']: continue
                 if kstp > 0 and kper > 0:
-                    if key[0] == kstp and key[1] == kper:
+                    if header['kstp'] == kstp and header['kper'] == kper:
                         break
                 elif totim >= 0.:
-                    if totim == key[9]:
+                    if totim == header['totim']:
                         break
                 else:
                     raise Exception('Data not found...')
 
-        ipos = self.recorddict[key]
+        ipos = self.recorddict[header]
         self.file.seek(ipos, 0)
-        imeth = key[6]
-        s = 'Returning ' + key[2].strip() + ' as '
+        imeth = header['imeth']
+        s = 'Returning ' + header['text'].strip() + ' as '
+        nlay = abs(header['nlay'])
+        nrow = header['nrow']
+        ncol = header['ncol']
         if imeth == 0:
-            s += 'an array of shape ' + str( (self.nlay, self.nrow, self.ncol) )
+            s += 'an array of shape ' + str( (nlay, nrow, ncol) )
             print s           
             return binaryread(self.file, self.realtype(1), shape=
-                              (self.nlay, self.nrow, self.ncol))
+                              (nlay, nrow, ncol))
         elif imeth == 1:
-            s += 'an array of shape ' + str( (self.nlay, self.nrow, self.ncol) )
+            s += 'an array of shape ' + str( (nlay, nrow, ncol) )
             print s           
             return binaryread(self.file, self.realtype(1), shape=
-                              (self.nlay, self.nrow, self.ncol))
+                              (nlay, nrow, ncol))
         elif imeth == 2:
             nlist = binaryread(self.file, np.int32)
             dtype = np.dtype([('node', np.int32), ('q', self.realtype)])
@@ -456,25 +464,26 @@ class CellBudgetFile(object):
             return binaryread(self.file, dtype, shape=(nlist,))
         elif imeth == 3:
             ilayer = binaryread(self.file, np.int32, shape=
-                              (self.nrow, self.ncol))
+                              (nrow, ncol))
             data = binaryread(self.file, self.realtype(1), shape=
-                              (self.nrow, self.ncol))
+                              (nrow, ncol))
             s += 'a list of two 2D arrays.  '
             s += 'The first is an integer layer array of shape  ' + str( 
-                                                       (self.nrow, self.ncol) )
+                                                       (nrow, ncol) )
             s += 'The second is real data array of shape  ' + str( 
-                                                       (self.nrow, self.ncol) )
+                                                       (nrow, ncol) )
             print s
             return [ilayer, data]
         elif imeth == 4:
-            s += 'a 2d array of shape ' + str( (self.nrow, self.ncol) )
+            s += 'a 2d array of shape ' + str( (nrow, ncol) )
             print s
             return binaryread(self.file, self.realtype(1), shape=
-                              (self.nrow, self.ncol))
+                              (nrow, ncol))
         elif imeth == 5:
-            nval = binaryread(self.file, np.int32)
+            nauxp1 = binaryread(self.file, np.int32)
+            naux = nauxp1 - 1
             l = [('node', np.int32), ('q', self.realtype)]
-            for i in xrange(nval - 1):
+            for i in xrange(naux):
                 auxname = binaryread(self.file, str, charlen=16)
                 l.append( (auxname, self.realtype) )
             dtype = np.dtype(l)                
