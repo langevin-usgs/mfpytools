@@ -180,7 +180,7 @@ class BinaryLayerFile(object):
         if the ilay argument is specified.
         '''
         if idx is not None:
-            totim = self.recorddict.keys()[idx]
+            totim = self.recorddict.keys()[idx][self.header_dtype.names.index('totim')]
         self._fill_value_array(kstp, kper, totim)
         if ilay == 0:
             return self.value
@@ -460,8 +460,9 @@ class CellBudgetFile(object):
             nlist = binaryread(self.file, np.int32)
             dtype = np.dtype([('node', np.int32), ('q', self.realtype)])
             s += 'a list array of shape ' + str( nlist ) 
-            print s           
-            return binaryread(self.file, dtype, shape=(nlist,))
+            print s  
+            data = binaryread(self.file, dtype, shape=(nlist,))
+            return dict(zip(data['node'],data['q']))
         elif imeth == 3:
             ilayer = binaryread(self.file, np.int32, shape=
                               (nrow, ncol))
@@ -490,5 +491,6 @@ class CellBudgetFile(object):
             nlist = binaryread(self.file, np.int32)
             s += 'a list array of shape ' + str( nlist ) 
             print s
-            return binaryread(self.file, dtype, shape=(nlist,))
+            data = binaryread(self.file, dtype, shape=(nlist,))
+            return dict(zip(data['node'],data['q']))
         return
