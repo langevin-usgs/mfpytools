@@ -330,6 +330,7 @@ class CellBudgetFile(object):
         ipos = 0
         while ipos < self.totalbytes:           
             header = self.get_header()
+            print header
             self.nrecords += 1
             totim = header['totim']
             if totim > 0 and totim not in self.times:
@@ -368,8 +369,8 @@ class CellBudgetFile(object):
             nlist = binaryread(self.file, np.int32)[0]
             nbytes = nlist * (np.int32(1).nbytes + self.realtype(1).nbytes)
         elif imeth == 3:
-            nbytes = (nrow * ncol * nlay * self.realtype(1).nbytes)
-            nbytes += (nrow * ncol * nlay * np.int32(1).nbytes)
+            nbytes = (nrow * ncol * self.realtype(1).nbytes)
+            nbytes += (nrow * ncol * np.int32(1).nbytes)
         elif imeth == 4:
             nbytes = (nrow * ncol * self.realtype(1).nbytes)
         elif imeth == 5:
@@ -383,7 +384,8 @@ class CellBudgetFile(object):
                               naux * self.realtype(1).nbytes)
         else:
             raise Exception('invalid method code ' + str(imeth))
-        self.file.seek(nbytes, 1)
+        if nbytes != 0:
+            self.file.seek(nbytes, 1)
         return
                           
     def get_header(self):
