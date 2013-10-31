@@ -330,7 +330,8 @@ class CellBudgetFile(object):
         ipos = 0
         while ipos < self.totalbytes:           
             header = self.get_header()
-            print header
+            if self.verbose:
+                print header
             self.nrecords += 1
             totim = header['totim']
             if totim > 0 and totim not in self.times:
